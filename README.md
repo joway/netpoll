@@ -44,7 +44,6 @@ For more information, please refer to [Document](#document).
     - Linux, Mac OS (operating system)
 
 * **Future**
-    - [multisyscall][multisyscall] supports batch system calls
     - [io_uring][io_uring]
     - Shared Memory IPC
     - Serial scheduling I/O, suitable for pure computing

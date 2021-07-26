@@ -39,7 +39,6 @@ goroutine，大幅增加调度开销。此外，[net.Conn][net.Conn] 没有提�
     - 支持 Linux，Mac OS（操作系统）
 
 * **即将开源**
-    - [multisyscall][multisyscall] 支持批量系统调用
     - [io_uring][io_uring]
     - Shared Memory IPC
     - 串行调度 I/O，适用于纯计算
