@@ -1,9 +1,9 @@
-github.com/bytedance/gopkg v0.0.0-20210507130052-24980f04837a h1:wjM2Z8ZV1OjQMyVSoXIDqjWK5BEuRHT+S6kLH1BVR5c=
-github.com/bytedance/gopkg v0.0.0-20210507130052-24980f04837a/go.mod h1:birsdqRCbwnckJbdAvcSao+AzOyibVEoWB55MjpYpB8=
-github.com/bytedance/gopkg v0.0.0-20210705062217-74c74ebadcae h1:ERLYTdHnm2E8jwpprhHPvBhbPBaxnwl62tb3lR8Nd+k=
-github.com/bytedance/gopkg v0.0.0-20210705062217-74c74ebadcae/go.mod h1:birsdqRCbwnckJbdAvcSao+AzOyibVEoWB55MjpYpB8=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/joway/gopkg v0.0.0-20210728100110-f384061d02c7 h1:Xi/i1cNmzcfdrdT6ztbu0f94mtKbCKLH/waFbq0Q9AE=
+github.com/joway/gopkg v0.0.0-20210728100110-f384061d02c7/go.mod h1:Ma8ltQWWNLfKwnicMRok5yk4p5p9x45bYsVd8hvVHs8=
+github.com/loov/hrtime v1.0.3 h1:LiWKU3B9skJwRPUf0Urs9+0+OE3TxdMuiRPOTwR0gcU=
+github.com/loov/hrtime v1.0.3/go.mod h1:yDY3Pwv2izeY4sq7YcPX/dtLwzg5NU1AxWuWxKwd0p0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
