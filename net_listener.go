@@ -144,17 +144,23 @@ func (ln *listener) Fd() (fd int) {
 }
 
 func (ln *listener) parseFD() (err error) {
-	switch netln := ln.ln.(type) {
-	case *net.TCPListener:
-		ln.file, err = netln.File()
-	case *net.UnixListener:
-		ln.file, err = netln.File()
-	default:
-		return errors.New("listener type can't support")
-	}
+	f, err := ParseListener(ln.ln)
 	if err != nil {
 		return err
 	}
-	ln.fd = int(ln.file.Fd())
+	ln.fd = int(f.Fd())
+	ln.file = f
 	return nil
+}
+
+func ParseListener(ln net.Listener) (file *os.File, err error) {
+	switch netln := ln.(type) {
+	case *net.TCPListener:
+		file, err = netln.File()
+	case *net.UnixListener:
+		file, err = netln.File()
+	default:
+		return nil, errors.New("listener type can't support")
+	}
+	return
 }
