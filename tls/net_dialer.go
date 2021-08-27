@@ -3,6 +3,7 @@ package tls
 import (
 	"crypto/tls"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/cloudwego/netpoll"
@@ -33,10 +34,30 @@ func (d *dialer) DialTimeout(network, address string, timeout time.Duration, con
 func (d *dialer) DialConnection(
 	network, address string, timeout time.Duration, config *tls.Config,
 ) (connection netpoll.Connection, err error) {
-	dialer := &net.Dialer{Timeout: timeout}
-	conn, err := tls.DialWithDialer(dialer, network, address, config)
+	conn, err := netpoll.DialConnection(network, address, timeout)
 	if err != nil {
 		return nil, err
 	}
-	return GetConnection(conn)
+
+	colonPos := strings.LastIndex(address, ":")
+	if colonPos == -1 {
+		colonPos = len(address)
+	}
+	hostname := address[:colonPos]
+
+	// If no ServerName is set, infer the ServerName
+	// from the hostname we're connecting to.
+	if config.ServerName == "" {
+		// Make a copy to avoid polluting argument or default.
+		c := config.Clone()
+		c.ServerName = hostname
+		config = c
+	}
+
+	client := tls.Client(conn, config)
+	if err = client.Handshake(); err != nil {
+		return nil, err
+	}
+
+	return GetConnection(client)
 }

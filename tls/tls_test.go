@@ -115,6 +115,7 @@ JDqUZDGDMvz1AWPCYe+U/BW+RdffuOIMvIJwRrOZeFEiUXiQnlSmAg==
 func testNativeTLSServer(t *testing.T) {
 	ln, err := tls.Listen("tcp", ":443", getServerTLSConfig())
 	MustNil(t, err)
+	defer ln.Close()
 	for {
 		conn, err := ln.Accept()
 		MustNil(t, err)
@@ -139,6 +140,7 @@ func testNativeTLSServer(t *testing.T) {
 func testTLSServer(t *testing.T) {
 	ln, err := CreateListener("tcp", ":443", getServerTLSConfig())
 	MustNil(t, err)
+	defer ln.Close()
 	for {
 		conn, err := ln.Accept()
 		MustNil(t, err)
@@ -227,6 +229,9 @@ func getClientTLSConfig() *tls.Config {
 }
 
 func MustNil(t *testing.T, val interface{}) {
+	if t == nil {
+		return
+	}
 	t.Helper()
 	Assert(t, val == nil, val)
 	if val != nil {
@@ -235,6 +240,9 @@ func MustNil(t *testing.T, val interface{}) {
 }
 
 func MustTrue(t *testing.T, cond bool) {
+	if t == nil {
+		return
+	}
 	t.Helper()
 	if !cond {
 		t.Fatal("assertion true failed.")
@@ -242,6 +250,9 @@ func MustTrue(t *testing.T, cond bool) {
 }
 
 func Equal(t *testing.T, got, expect interface{}) {
+	if t == nil {
+		return
+	}
 	t.Helper()
 	if got != expect {
 		t.Fatalf("assertion equal failed, got=[%v], expect=[%v]", got, expect)
@@ -249,6 +260,9 @@ func Equal(t *testing.T, got, expect interface{}) {
 }
 
 func Assert(t *testing.T, cond bool, val ...interface{}) {
+	if t == nil {
+		return
+	}
 	t.Helper()
 	if !cond {
 		if len(val) > 0 {
