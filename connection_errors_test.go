@@ -30,4 +30,9 @@ func TestErrno(t *testing.T) {
 	MustTrue(t, errors.Is(err2, syscall.EPIPE))
 	Equal(t, err2.Error(), "broken pipe when flush")
 	t.Logf("error2=%s", err2)
+
+	var err3 error = Exception(ErrEOF, "")
+	MustTrue(t, errors.Is(err3, ErrEOF))
+	Equal(t, err3.Error(), "EOF")
+	t.Logf("error3=%s", err3)
 }

@@ -5,16 +5,53 @@ import (
 	"crypto/x509"
 	"errors"
 	"io"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/cloudwego/netpoll"
 )
 
 func TestDialerAndListener(t *testing.T) {
-	go testTLSServer(t)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		testTLSServer(t)
+	}()
 
 	time.Sleep(time.Millisecond * 100)
 
 	testTLSClient(t)
+	wg.Wait()
+}
+
+func TestDialer(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		testNativeTLSServer(t)
+	}()
+
+	time.Sleep(time.Millisecond * 100)
+
+	testTLSClient(t)
+	wg.Wait()
+}
+
+func TestListener(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		testTLSServer(t)
+	}()
+
+	time.Sleep(time.Millisecond * 100)
+
+	testNativeTLSClient(t)
+	wg.Wait()
 }
 
 var (
@@ -115,63 +152,97 @@ JDqUZDGDMvz1AWPCYe+U/BW+RdffuOIMvIJwRrOZeFEiUXiQnlSmAg==
 func testNativeTLSServer(t *testing.T) {
 	ln, err := tls.Listen("tcp", ":443", getServerTLSConfig())
 	MustNil(t, err)
-	defer ln.Close()
-	for {
-		conn, err := ln.Accept()
+	defer func() {
+		err := ln.Close()
 		MustNil(t, err)
+		t.Logf("native server closed")
+	}()
 
-		buf := make([]byte, 1024)
-		go func() {
-			defer conn.Close()
-			for {
-				n, err := conn.Read(buf)
-				if errors.Is(err, io.EOF) {
-					return
-				}
-				MustNil(t, err)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	conn, err := ln.Accept()
+	MustNil(t, err)
 
-				n, err = conn.Write(buf[:n])
-				MustNil(t, err)
-			}
+	buf := make([]byte, 1024)
+	go func() {
+		defer func() {
+			err := conn.Close()
+			MustNil(t, err)
+			wg.Done()
 		}()
-	}
+
+		for {
+			n, err := conn.Read(buf)
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			MustNil(t, err)
+
+			n, err = conn.Write(buf[:n])
+			MustNil(t, err)
+		}
+	}()
+
+	wg.Wait()
 }
 
 func testTLSServer(t *testing.T) {
 	ln, err := CreateListener("tcp", ":443", getServerTLSConfig())
 	MustNil(t, err)
-	defer ln.Close()
-	for {
-		conn, err := ln.Accept()
+	defer func() {
+		err := ln.Close()
 		MustNil(t, err)
-		tlsConn, err := GetConnection(conn)
-		MustNil(t, err)
-		r, w := tlsConn.Reader(), tlsConn.Writer()
+		t.Logf("server closed")
+	}()
 
-		msg := "hello"
-		go func() {
-			defer tlsConn.Close()
-			for {
-				resp, err := r.ReadString(len(msg))
-				if errors.Is(err, io.EOF) {
-					return
-				}
-				MustNil(t, err)
-				MustTrue(t, msg == resp)
-				r.Release()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	conn, err := ln.Accept()
+	MustNil(t, err)
+	tlsConn, err := GetConnection(conn)
+	MustNil(t, err)
+	r, w := tlsConn.Reader(), tlsConn.Writer()
 
-				_, err = w.WriteString(msg)
-				MustNil(t, err)
-				w.Flush()
-			}
+	msg := "hello"
+	go func() {
+		defer func() {
+			err := tlsConn.Close()
+			MustNil(t, err)
+			wg.Done()
 		}()
-	}
+
+		for {
+			resp, err := r.ReadString(len(msg))
+			if errors.Is(err, netpoll.ErrEOF) {
+				return
+			}
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			MustNil(t, err)
+			MustTrue(t, msg == resp)
+			err = r.Release()
+			MustNil(t, err)
+
+			_, err = w.WriteString(msg)
+			MustNil(t, err)
+			err = w.Flush()
+			MustNil(t, err)
+		}
+	}()
+
+	wg.Wait()
 }
 
 func testTLSClient(t *testing.T) {
 	conn, err := DialConnection("tcp", ":443", time.Second, getClientTLSConfig())
 	MustNil(t, err)
 	r, w := conn.Reader(), conn.Writer()
+	defer func() {
+		err := conn.Close()
+		MustNil(t, err)
+		t.Logf("client closed")
+	}()
 
 	msg := "hello"
 	for i := 0; i < 1024; i++ {
@@ -191,6 +262,11 @@ func testTLSClient(t *testing.T) {
 func testNativeTLSClient(t *testing.T) {
 	conn, err := tls.Dial("tcp", ":443", getClientTLSConfig())
 	MustNil(t, err)
+	defer func() {
+		err := conn.Close()
+		MustNil(t, err)
+		t.Logf("native client closed")
+	}()
 
 	buf := make([]byte, 1024)
 	for i := 0; i < 1024; i++ {
