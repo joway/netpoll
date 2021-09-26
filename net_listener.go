@@ -17,7 +17,6 @@
 package netpoll
 
 import (
-	"errors"
 	"net"
 	"os"
 	"syscall"
@@ -33,44 +32,41 @@ type Listener interface {
 
 // CreateListener return a new Listener.
 func CreateListener(network, addr string) (l Listener, err error) {
-	if network == "udp" {
+	ln := &listener{
+		network: network,
+		addr:    addr,
+	}
+
+	defer func() {
+		if err != nil {
+			ln.Close()
+		}
+	}()
+
+	if ln.network == "udp" {
 		// TODO: udp listener.
-		return udpListener(network, addr)
-	}
-	// tcp, tcp4, tcp6, unix
-	ln, err := net.Listen(network, addr)
-	if err != nil {
-		return nil, err
-	}
-	return ConvertListener(ln)
-}
-
-// ConvertListener converts net.Listener to Listener
-func ConvertListener(l net.Listener) (nl Listener, err error) {
-	if tmp, ok := l.(Listener); ok {
-		return tmp, nil
-	}
-	ln := &listener{}
-	ln.ln = l
-	ln.addr = l.Addr()
-	err = ln.parseFD()
-	if err != nil {
-		return nil, err
-	}
-	return ln, syscall.SetNonblock(ln.fd, true)
-}
-
-// TODO: udpListener does not work now.
-func udpListener(network, addr string) (l Listener, err error) {
-	ln := &listener{}
-	ln.pconn, err = net.ListenPacket(network, addr)
-	if err != nil {
-		return nil, err
-	}
-	ln.addr = ln.pconn.LocalAddr()
-	switch pconn := ln.pconn.(type) {
-	case *net.UDPConn:
-		ln.file, err = pconn.File()
+		ln.pconn, err = net.ListenPacket(ln.network, ln.addr)
+		if err != nil {
+			return nil, err
+		}
+		ln.lnaddr = ln.pconn.LocalAddr()
+		switch pconn := ln.pconn.(type) {
+		case *net.UDPConn:
+			ln.file, err = pconn.File()
+		}
+	} else {
+		// tcp, tcp4, tcp6, unix
+		ln.ln, err = net.Listen(ln.network, ln.addr)
+		if err != nil {
+			return nil, err
+		}
+		ln.lnaddr = ln.ln.Addr()
+		switch netln := ln.ln.(type) {
+		case *net.TCPListener:
+			ln.file, err = netln.File()
+		case *net.UnixListener:
+			ln.file, err = netln.File()
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -82,11 +78,13 @@ func udpListener(network, addr string) (l Listener, err error) {
 var _ net.Listener = &listener{}
 
 type listener struct {
-	fd    int
-	addr  net.Addr       // listener's local addr
-	ln    net.Listener   // tcp|unix listener
-	pconn net.PacketConn // udp listener
-	file  *os.File
+	ln      net.Listener   // tcp|unix listener
+	lnaddr  net.Addr       // listener's local addr
+	pconn   net.PacketConn // udp listener
+	file    *os.File
+	fd      int
+	network string // tcp, tcp4, tcp6, udp, udp4, udp6, unix
+	addr    string
 }
 
 // Accept implements Listener.
@@ -105,8 +103,8 @@ func (ln *listener) Accept() (net.Conn, error) {
 	}
 	var nfd = &netFD{}
 	nfd.fd = fd
-	nfd.localAddr = ln.addr
-	nfd.network = ln.addr.Network()
+	nfd.network = ln.network
+	nfd.localAddr = ln.lnaddr
 	nfd.remoteAddr = sockaddrToAddr(sa)
 	return nfd, nil
 }
@@ -130,31 +128,18 @@ func (ln *listener) Close() error {
 	if ln.pconn != nil {
 		ln.pconn.Close()
 	}
+	if ln.network == "unix" {
+		os.RemoveAll(ln.addr)
+	}
 	return nil
 }
 
 // Addr implements Listener.
 func (ln *listener) Addr() net.Addr {
-	return ln.addr
+	return ln.lnaddr
 }
 
 // Fd implements Listener.
 func (ln *listener) Fd() (fd int) {
 	return ln.fd
-}
-
-func (ln *listener) parseFD() (err error) {
-	switch netln := ln.ln.(type) {
-	case *net.TCPListener:
-		ln.file, err = netln.File()
-	case *net.UnixListener:
-		ln.file, err = netln.File()
-	default:
-		return errors.New("listener type can't support")
-	}
-	if err != nil {
-		return err
-	}
-	ln.fd = int(ln.file.Fd())
-	return nil
 }
