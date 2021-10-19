@@ -80,6 +80,9 @@ func (a *pollArgs) reset(size, caps int) {
 
 // Wait implements Poll.
 func (p *defaultPoll) Wait() (err error) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	// init
 	var caps, msec, n = barriercap, -1, 0
 	p.Reset(128, caps)
