@@ -32,7 +32,6 @@ type connection struct {
 	locker
 	operator        *FDOperator
 	readTimeout     time.Duration
-	readTimer       *time.Timer
 	readTrigger     chan struct{}
 	waitReadSize    int32
 	writeTrigger    chan error
@@ -348,62 +347,29 @@ func (c *connection) waitRead(n int) (err error) {
 	}
 	atomic.StoreInt32(&c.waitReadSize, int32(n))
 	defer atomic.StoreInt32(&c.waitReadSize, 0)
-	if c.readTimeout > 0 {
-		return c.waitReadWithTimeout(n)
-	}
+
 	// wait full n
 	for c.inputBuffer.Len() < n {
-		if c.IsActive() {
-			<-c.readTrigger
-			continue
-		}
-		// confirm that fd is still valid.
-		if atomic.LoadUint32(&c.netFD.closed) == 0 {
-			return c.fill(n)
-		}
-		return Exception(ErrConnClosed, "wait read")
-	}
-	return nil
-}
-
-// waitReadWithTimeout will wait full n bytes or until timeout.
-func (c *connection) waitReadWithTimeout(n int) (err error) {
-	// set read timeout
-	if c.readTimer == nil {
-		c.readTimer = time.NewTimer(c.readTimeout)
-	} else {
-		c.readTimer.Reset(c.readTimeout)
-	}
-
-	for c.inputBuffer.Len() < n {
 		if !c.IsActive() {
-			// cannot return directly, stop timer before !
 			// confirm that fd is still valid.
 			if atomic.LoadUint32(&c.netFD.closed) == 0 {
-				err = c.fill(n)
-			} else {
-				err = Exception(ErrConnClosed, "wait read")
+				return c.fill(n)
+			}
+			return Exception(ErrConnClosed, "wait read")
+		}
+
+		if c.readTimeout <= 0 {
+			<-c.readTrigger
+		} else {
+			select {
+			case <-globalTimer.After(c.readTimeout):
+				return Exception(ErrReadTimeout, c.readTimeout.String())
+			case <-c.readTrigger:
 			}
 			break
 		}
-
-		select {
-		case <-c.readTimer.C:
-			// double check if there is enough data to be read
-			if c.inputBuffer.Len() >= n {
-				return nil
-			}
-			return Exception(ErrReadTimeout, c.remoteAddr.String())
-		case <-c.readTrigger:
-			continue
-		}
 	}
-
-	// clean timer.C
-	if !c.readTimer.Stop() {
-		<-c.readTimer.C
-	}
-	return err
+	return nil
 }
 
 // fill data after connection is closed.
