@@ -363,6 +363,10 @@ func (c *connection) waitRead(n int) (err error) {
 		} else {
 			select {
 			case <-globalTimer.After(c.readTimeout):
+				// double check if there is enough data to be read
+				if c.inputBuffer.Len() >= n {
+					return nil
+				}
 				return Exception(ErrReadTimeout, c.readTimeout.String())
 			case <-c.readTrigger:
 			}
