@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !race
 // +build !race
 
 package netpoll
@@ -145,9 +146,18 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 					// for connection
 					var bs = operator.Inputs(p.barriers[i].bs)
 					if len(bs) > 0 {
-						var n, err = readv(operator.FD, bs, p.barriers[i].ivs)
+						var (
+							n   int
+							err error
+						)
+						for {
+							n, err = readv(operator.FD, bs, p.barriers[i].ivs)
+							if err != syscall.EAGAIN && err != syscall.EINTR {
+								break
+							}
+						}
 						operator.InputAck(n)
-						if err != nil && err != syscall.EAGAIN && err != syscall.EINTR {
+						if err != nil {
 							log.Printf("readv(fd=%d) failed: %s", operator.FD, err.Error())
 							hups = append(hups, operator)
 							break
@@ -164,9 +174,18 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 					var bs, supportZeroCopy = operator.Outputs(p.barriers[i].bs)
 					if len(bs) > 0 {
 						// TODO: Let the upper layer pass in whether to use ZeroCopy.
-						var n, err = sendmsg(operator.FD, bs, p.barriers[i].ivs, false && supportZeroCopy)
+						var (
+							n   int
+							err error
+						)
+						for {
+							n, err = sendmsg(operator.FD, bs, p.barriers[i].ivs, false && supportZeroCopy)
+							if err != syscall.EAGAIN && err != syscall.EINTR {
+								break
+							}
+						}
 						operator.OutputAck(n)
-						if err != nil && err != syscall.EAGAIN {
+						if err != nil {
 							log.Printf("sendmsg(fd=%d) failed: %s", operator.FD, err.Error())
 							hups = append(hups, operator)
 							break
