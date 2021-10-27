@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !race
 // +build !race
 
 package netpoll
@@ -19,6 +20,7 @@ package netpoll
 import (
 	"log"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"unsafe"
@@ -106,6 +108,7 @@ func (p *defaultPoll) Wait() (err error) {
 
 func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 	var hups []*FDOperator // TODO: maybe can use sync.Pool
+	var wg sync.WaitGroup
 	for i := range events {
 		var operator = *(**FDOperator)(unsafe.Pointer(&events[i].data))
 		// trigger or exit gracefully
@@ -130,37 +133,46 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 		// check hup first
 		case evt&(syscall.EPOLLHUP|syscall.EPOLLRDHUP) != 0:
 			hups = append(hups, operator)
+			operator.done()
 		case evt&syscall.EPOLLERR != 0:
 			// Under block-zerocopy, the kernel may give an error callback, which is not a real error, just an EAGAIN.
 			// So here we need to check this error, if it is EAGAIN then do nothing, otherwise still mark as hup.
 			if _, _, _, _, err := syscall.Recvmsg(operator.FD, nil, nil, syscall.MSG_ERRQUEUE); err != syscall.EAGAIN {
 				hups = append(hups, operator)
 			}
-		default:
-			if evt&syscall.EPOLLIN != 0 {
-				if operator.OnRead != nil {
-					// for non-connection
-					operator.OnRead(p)
-				} else {
-					// for connection
+			operator.done()
+		case evt&syscall.EPOLLIN != 0:
+			if operator.OnRead != nil {
+				// for non-connection
+				operator.OnRead(p)
+				operator.done()
+			} else {
+				// for connection
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
 					var bs = operator.Inputs(p.barriers[i].bs)
 					if len(bs) > 0 {
 						var n, err = readv(operator.FD, bs, p.barriers[i].ivs)
 						operator.InputAck(n)
 						if err != nil && err != syscall.EAGAIN && err != syscall.EINTR {
 							log.Printf("readv(fd=%d) failed: %s", operator.FD, err.Error())
-							hups = append(hups, operator)
-							break
+							p.detach(operator)
 						}
 					}
-				}
+					operator.done()
+				}()
 			}
-			if evt&syscall.EPOLLOUT != 0 {
-				if operator.OnWrite != nil {
-					// for non-connection
-					operator.OnWrite(p)
-				} else {
-					// for connection
+		case evt&syscall.EPOLLOUT != 0:
+			if operator.OnWrite != nil {
+				// for non-connection
+				operator.OnWrite(p)
+				operator.done()
+			} else {
+				// for connection
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
 					var bs, supportZeroCopy = operator.Outputs(p.barriers[i].bs)
 					if len(bs) > 0 {
 						// TODO: Let the upper layer pass in whether to use ZeroCopy.
@@ -168,15 +180,15 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 						operator.OutputAck(n)
 						if err != nil && err != syscall.EAGAIN {
 							log.Printf("sendmsg(fd=%d) failed: %s", operator.FD, err.Error())
-							hups = append(hups, operator)
-							break
+							p.detach(operator)
 						}
 					}
-				}
+					operator.done()
+				}()
 			}
 		}
-		operator.done()
 	}
+	wg.Wait()
 	// hup conns together to avoid blocking the poll.
 	if len(hups) > 0 {
 		p.detaches(hups)
@@ -224,6 +236,11 @@ func (p *defaultPoll) Control(operator *FDOperator, event PollEvent) error {
 		op, evt.events = syscall.EPOLL_CTL_MOD, syscall.EPOLLIN|syscall.EPOLLRDHUP|syscall.EPOLLERR
 	}
 	return EpollCtl(p.fd, op, operator.FD, &evt)
+}
+
+func (p *defaultPoll) detach(hup *FDOperator) error {
+	p.Control(hup, PollDetach)
+	return hup.OnHup(p)
 }
 
 func (p *defaultPoll) detaches(hups []*FDOperator) error {
