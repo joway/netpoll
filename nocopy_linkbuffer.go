@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !race
 // +build !race
 
 package netpoll
@@ -735,7 +736,8 @@ func unsafeStringToSlice(s string) (b []byte) {
 }
 
 // mallocMax is 8MB
-const mallocMax = block8k * block1k
+//const mallocMax = block8k * block1k
+const mallocMax = 0
 
 // malloc limits the cap of the buffer from mcache.
 func malloc(size, capacity int) []byte {
