@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !race
 // +build !race
 
 package netpoll
 
 import (
+	"fmt"
 	"log"
 	"runtime"
 	"sync/atomic"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
@@ -85,10 +88,16 @@ func (p *defaultPoll) Wait() (err error) {
 	p.Reset(128, caps)
 	// wait
 	for {
+		beg := time.Now()
 		if n == p.size && p.size < 128*1024 {
 			p.Reset(p.size<<1, caps)
 		}
 		n, err = EpollWait(p.fd, p.events, msec)
+		cost := time.Now().Sub(beg).Milliseconds()
+		if cost >= 1 {
+			fmt.Printf("EpollWait(%d)=%d cost %d ms\n", p.fd, n, cost)
+		}
+
 		if err != nil && err != syscall.EINTR {
 			return err
 		}
@@ -98,8 +107,13 @@ func (p *defaultPoll) Wait() (err error) {
 			continue
 		}
 		msec = 0
+		beg = time.Now()
 		if p.Handler(p.events[:n]) {
 			return nil
+		}
+		cost = time.Now().Sub(beg).Milliseconds()
+		if cost >= 1 {
+			fmt.Printf("Handler(%d, %d) cost %d ms\n", p.fd, n, cost)
 		}
 	}
 }

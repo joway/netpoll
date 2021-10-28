@@ -525,13 +525,9 @@ func (b *LinkBuffer) GetBytes(p [][]byte) (vs [][]byte) {
 
 // Book will grow and fill the slice p greater than min.
 func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
-	var i, l, loop int
+	beg := time.Now()
+	var i, l int
 	for {
-		loop++
-		if loop >= 1000 {
-			fmt.Printf("book dead loop %d\n", loop)
-		}
-
 		l = cap(b.write.buf) - b.write.malloc
 		if l > 0 {
 			p[i] = b.write.Malloc(l)
@@ -542,14 +538,18 @@ func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
 			}
 		}
 		if b.write.next == nil {
-			beg := time.Now()
 			b.write.next = newLinkBufferNodeDebug(min)
 			cost := time.Now().Sub(beg).Milliseconds()
 			if cost >= 1 {
-				fmt.Printf("book newLinkBufferNode cost %d ms\n", cost)
+				fmt.Printf("book newLinkBufferNodeDebug cost %d ms\n", cost)
 			}
 		}
 		b.write = b.write.next
+	}
+
+	cost := time.Now().Sub(beg).Milliseconds()
+	if cost >= 1 {
+		fmt.Printf("book cost %d ms\n", cost)
 	}
 	return p[:i]
 }
