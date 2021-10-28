@@ -538,8 +538,9 @@ func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
 			}
 		}
 		if b.write.next == nil {
+			nbeg := time.Now()
 			b.write.next = newLinkBufferNodeDebug(min)
-			cost := time.Now().Sub(beg).Milliseconds()
+			cost := time.Now().Sub(nbeg).Milliseconds()
 			if cost >= 1 {
 				fmt.Printf("book newLinkBufferNodeDebug cost %d ms\n", cost)
 			}
