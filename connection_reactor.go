@@ -15,6 +15,7 @@
 package netpoll
 
 import (
+	"fmt"
 	"sync/atomic"
 	"syscall"
 )
@@ -24,6 +25,7 @@ import (
 // onHup means close by poller.
 func (c *connection) onHup(p Poll) error {
 	if c.closeBy(poller) {
+		fmt.Printf("conn %d closed by poller\n", c.fd)
 		c.triggerRead()
 		c.triggerWrite(ErrConnClosed)
 		// It depends on closing by user if OnRequest is nil, otherwise it needs to be released actively.
@@ -39,6 +41,7 @@ func (c *connection) onHup(p Poll) error {
 // onClose means close by user.
 func (c *connection) onClose() error {
 	if c.closeBy(user) {
+		fmt.Printf("conn %d closed by user\n", c.fd)
 		// If Close is called during OnPrepare, poll is not registered.
 		if c.operator.poll != nil {
 			c.operator.Control(PollDetach)
