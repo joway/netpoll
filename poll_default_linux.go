@@ -153,8 +153,13 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 		default:
 			if evt&syscall.EPOLLIN != 0 {
 				if operator.OnRead != nil {
+					beg := time.Now()
 					// for non-connection
 					operator.OnRead(p)
+					cost := time.Now().Sub(beg).Milliseconds()
+					if cost > 5 {
+						fmt.Printf("onread costs %d ms\n", cost)
+					}
 				} else {
 					// for connection
 					var bs = operator.Inputs(p.barriers[i].bs)
@@ -172,7 +177,12 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 			if evt&syscall.EPOLLOUT != 0 {
 				if operator.OnWrite != nil {
 					// for non-connection
+					beg := time.Now()
 					operator.OnWrite(p)
+					cost := time.Now().Sub(beg).Milliseconds()
+					if cost > 5 {
+						fmt.Printf("onwrite costs %d ms\n", cost)
+					}
 				} else {
 					// for connection
 					var bs, supportZeroCopy = operator.Outputs(p.barriers[i].bs)

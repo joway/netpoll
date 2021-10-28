@@ -330,7 +330,7 @@ func (b *LinkBuffer) MallocAck(n int) (err error) {
 // Flush will submit all malloc data and must confirm that the allocated bytes have been correctly assigned.
 func (b *LinkBuffer) Flush() (err error) {
 	b.mallocSize = 0
-	// FIXME: The tail node must not be larger than 8KB to prevent Out Of Memory.
+	// FIXME: The tail node must not be larger than pagesize to prevent Out Of Memory.
 	if cap(b.write.buf) > pagesize {
 		b.write.next = newLinkBufferNode(0)
 		b.write = b.write.next
@@ -537,7 +537,7 @@ func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
 		}
 		if b.write.next == nil {
 			nbeg := time.Now()
-			b.write.next = newLinkBufferNodeDebug(min)
+			b.write.next = newLinkBufferNode(min)
 			cost := time.Now().Sub(nbeg).Milliseconds()
 			if cost >= 5 {
 				fmt.Printf("book newLinkBufferNodeDebug cost %d ms\n", cost)
@@ -608,19 +608,6 @@ func (b *LinkBuffer) recalLen(delta int) (err error) {
 // newLinkBufferNode create or reuse linkBufferNode.
 // Nodes with size <= 0 are marked as readonly, which means the node.buf is not allocated by this mcache.
 func newLinkBufferNode(size int) *linkBufferNode {
-	var node = linkedPool.Get().(*linkBufferNode)
-	if size <= 0 {
-		node.readonly = true
-		return node
-	}
-	if size < LinkBufferCap {
-		size = LinkBufferCap
-	}
-	node.buf = malloc(0, size)
-	return node
-}
-
-func newLinkBufferNodeDebug(size int) *linkBufferNode {
 	node := &linkBufferNode{
 		refer: 1, // 自带 1 引用
 	}
