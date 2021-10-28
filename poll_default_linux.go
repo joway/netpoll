@@ -94,7 +94,7 @@ func (p *defaultPoll) Wait() (err error) {
 		}
 		n, err = EpollWait(p.fd, p.events, msec)
 		cost := time.Now().Sub(beg).Milliseconds()
-		if cost >= 1 {
+		if cost >= 10 {
 			fmt.Printf("EpollWait(%d)=%d cost %d ms\n", p.fd, n, cost)
 		}
 
@@ -112,7 +112,7 @@ func (p *defaultPoll) Wait() (err error) {
 			return nil
 		}
 		cost = time.Now().Sub(beg).Milliseconds()
-		if cost >= 1 {
+		if cost >= 10 {
 			fmt.Printf("Handler(%d, %d) cost %d ms\n", p.fd, n, cost)
 		}
 	}
