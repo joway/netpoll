@@ -86,9 +86,7 @@ func (c *connection) inputAck(n int) (err error) {
 	}
 	leftover := atomic.AddInt32(&c.waitReadSize, int32(-n))
 	err = c.inputBuffer.BookAck(n, leftover <= 0)
-	if leftover <= 0 {
-		c.triggerRead()
-	}
+	c.triggerRead()
 	c.onRequest()
 	return err
 }
