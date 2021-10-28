@@ -80,6 +80,14 @@ func (a *pollArgs) reset(size, caps int) {
 	}
 }
 
+func (p *defaultPoll) lockThead() {
+	runtime.LockOSThread()
+}
+
+func (p *defaultPoll) unlockThead() {
+	runtime.UnlockOSThread()
+}
+
 // Wait implements Poll.
 func (p *defaultPoll) Wait() (err error) {
 	// init
@@ -101,11 +109,17 @@ func (p *defaultPoll) Wait() (err error) {
 			return err
 		}
 		if n <= 0 {
-			msec = -1
+			if msec == 0 {
+				msec = -1
+				p.unlockThead()
+			}
 			runtime.Gosched()
 			continue
 		}
-		msec = 0
+		if msec == -1 {
+			msec = 0
+			p.lockThead()
+		}
 		beg = time.Now()
 		if p.Handler(p.events[:n]) {
 			return nil
