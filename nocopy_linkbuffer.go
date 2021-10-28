@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !race
 // +build !race
 
 package netpoll
@@ -22,6 +23,7 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
+	"time"
 	"unsafe"
 
 	"github.com/bytedance/gopkg/lang/mcache"
@@ -523,6 +525,14 @@ func (b *LinkBuffer) GetBytes(p [][]byte) (vs [][]byte) {
 
 // Book will grow and fill the slice p greater than min.
 func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
+	beg := time.Now()
+	defer func() {
+		cost := time.Now().Sub(beg).Milliseconds()
+		if cost >= 1 {
+			fmt.Printf("linkbuf.book cost %d ms\n", cost)
+		}
+	}()
+
 	var i, l int
 	for {
 		l = cap(b.write.buf) - b.write.malloc
