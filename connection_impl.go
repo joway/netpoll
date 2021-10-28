@@ -15,6 +15,7 @@
 package netpoll
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -364,7 +365,10 @@ func (c *connection) waitReadWithTimeout(n int) (err error) {
 		if c.IsActive() {
 			select {
 			case <-c.readTimer.C:
-				return Exception(ErrReadTimeout, c.readTimeout.String())
+				return Exception(
+					ErrReadTimeout,
+					fmt.Sprintf("fd: %d, time: %s", c.fd, c.readTimeout.String()),
+				)
 			case <-c.readTrigger:
 				continue
 			}
