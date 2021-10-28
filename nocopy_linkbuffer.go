@@ -23,7 +23,6 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
-	"time"
 	"unsafe"
 
 	"github.com/bytedance/gopkg/lang/mcache"
@@ -525,16 +524,13 @@ func (b *LinkBuffer) GetBytes(p [][]byte) (vs [][]byte) {
 
 // Book will grow and fill the slice p greater than min.
 func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
-	beg := time.Now()
-	defer func() {
-		cost := time.Now().Sub(beg).Milliseconds()
-		if cost >= 1 {
-			fmt.Printf("linkbuf.book cost %d ms\n", cost)
-		}
-	}()
-
-	var i, l int
+	var i, l, loop int
 	for {
+		loop++
+		if loop >= 1000 {
+			fmt.Printf("book dead loop %d\n", loop)
+		}
+
 		l = cap(b.write.buf) - b.write.malloc
 		if l > 0 {
 			p[i] = b.write.Malloc(l)
