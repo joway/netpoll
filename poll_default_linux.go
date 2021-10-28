@@ -134,8 +134,14 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 			}
 			continue
 		}
+
+		beg := time.Now()
 		if !operator.do() {
 			continue
+		}
+		cost := time.Now().Sub(beg).Milliseconds()
+		if cost >= 1 {
+			log.Printf("cas costs %d ms\n", cost)
 		}
 
 		evt := events[i].events
