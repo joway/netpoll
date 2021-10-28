@@ -543,7 +543,7 @@ func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
 		}
 		if b.write.next == nil {
 			beg := time.Now()
-			b.write.next = newLinkBufferNode(min)
+			b.write.next = newLinkBufferNodeDebug(min)
 			cost := time.Now().Sub(beg).Milliseconds()
 			if cost >= 1 {
 				fmt.Printf("book newLinkBufferNode cost %d ms\n", cost)
@@ -618,6 +618,21 @@ func newLinkBufferNode(size int) *linkBufferNode {
 		size = LinkBufferCap
 	}
 	node.buf = malloc(0, size)
+	return node
+}
+
+func newLinkBufferNodeDebug(size int) *linkBufferNode {
+	node := &linkBufferNode{
+		refer: 1, // 自带 1 引用
+	}
+	if size <= 0 {
+		node.readonly = true
+		return node
+	}
+	if size < LinkBufferCap {
+		size = LinkBufferCap
+	}
+	node.buf = make([]byte, 0, size)
 	return node
 }
 
