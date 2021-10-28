@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !race
 // +build !race
 
 package netpoll
@@ -93,11 +94,17 @@ func (p *defaultPoll) Wait() (err error) {
 			return err
 		}
 		if n <= 0 {
-			msec = -1
+			if msec == 0 {
+				msec = -1
+				runtime.UnlockOSThread()
+			}
 			runtime.Gosched()
 			continue
 		}
-		msec = 0
+		if msec == -1 {
+			msec = 0
+			runtime.LockOSThread()
+		}
 		if p.Handler(p.events[:n]) {
 			return nil
 		}
