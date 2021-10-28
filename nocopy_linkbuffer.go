@@ -632,7 +632,7 @@ func newLinkBufferNodeDebug(size int) *linkBufferNode {
 	if size < LinkBufferCap {
 		size = LinkBufferCap
 	}
-	node.buf = make([]byte, 0, size)
+	node.buf = malloc(0, size)
 	return node
 }
 
@@ -762,7 +762,7 @@ func unsafeStringToSlice(s string) (b []byte) {
 }
 
 // mallocMax is 8MB
-const mallocMax = block8k * block1k
+const mallocMax = 8
 
 // malloc limits the cap of the buffer from mcache.
 func malloc(size, capacity int) []byte {
