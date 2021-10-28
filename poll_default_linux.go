@@ -95,7 +95,7 @@ func (p *defaultPoll) Wait() (err error) {
 		n, err = EpollWait(p.fd, p.events, msec)
 		cost := time.Now().Sub(beg).Milliseconds()
 		if cost >= 10 {
-			fmt.Printf("EpollWait(%d)=%d cost %d ms\n", p.fd, n, cost)
+			log.Printf("EpollWait(%d)=%d cost %d ms\n", p.fd, n, cost)
 		}
 
 		if err != nil && err != syscall.EINTR {
@@ -113,7 +113,7 @@ func (p *defaultPoll) Wait() (err error) {
 		}
 		cost = time.Now().Sub(beg).Milliseconds()
 		if cost >= 10 {
-			fmt.Printf("Handler(%d, %d) cost %d ms\n", p.fd, n, cost)
+			log.Printf("Handler(%d, %d) cost %d ms\n", p.fd, n, cost)
 		}
 	}
 }
@@ -158,13 +158,18 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 					operator.OnRead(p)
 					cost := time.Now().Sub(beg).Milliseconds()
 					if cost > 5 {
-						fmt.Printf("onread costs %d ms\n", cost)
+						log.Printf("onread costs %d ms\n", cost)
 					}
 				} else {
 					// for connection
 					var bs = operator.Inputs(p.barriers[i].bs)
 					if len(bs) > 0 {
+						beg := time.Now()
 						var n, err = readv(operator.FD, bs, p.barriers[i].ivs)
+						cost := time.Now().Sub(beg).Milliseconds()
+						if cost > 5 {
+							log.Printf("readv costs %d ms\n", cost)
+						}
 						operator.InputAck(n)
 						if err != nil && err != syscall.EAGAIN && err != syscall.EINTR {
 							log.Printf("readv(fd=%d) failed: %s", operator.FD, err.Error())
@@ -181,14 +186,19 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 					operator.OnWrite(p)
 					cost := time.Now().Sub(beg).Milliseconds()
 					if cost > 5 {
-						fmt.Printf("onwrite costs %d ms\n", cost)
+						log.Printf("onwrite costs %d ms\n", cost)
 					}
 				} else {
 					// for connection
 					var bs, supportZeroCopy = operator.Outputs(p.barriers[i].bs)
 					if len(bs) > 0 {
 						// TODO: Let the upper layer pass in whether to use ZeroCopy.
+						beg := time.Now()
 						var n, err = sendmsg(operator.FD, bs, p.barriers[i].ivs, false && supportZeroCopy)
+						cost := time.Now().Sub(beg).Milliseconds()
+						if cost > 5 {
+							log.Printf("sendmsg costs %d ms\n", cost)
+						}
 						operator.OutputAck(n)
 						if err != nil && err != syscall.EAGAIN {
 							log.Printf("sendmsg(fd=%d) failed: %s", operator.FD, err.Error())
@@ -251,6 +261,14 @@ func (p *defaultPoll) Control(operator *FDOperator, event PollEvent) error {
 }
 
 func (p *defaultPoll) detaches(hups []*FDOperator) error {
+	beg := time.Now()
+	defer func() {
+		cost := time.Now().Sub(beg).Milliseconds()
+		if cost > 5 {
+			fmt.Printf("detaches costs %d ms\n", cost)
+		}
+	}()
+
 	var onhups = make([]func(p Poll) error, len(hups))
 	for i := range hups {
 		onhups[i] = hups[i].OnHup

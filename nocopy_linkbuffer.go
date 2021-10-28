@@ -20,6 +20,7 @@ package netpoll
 import (
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -540,7 +541,7 @@ func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
 			b.write.next = newLinkBufferNode(min)
 			cost := time.Now().Sub(nbeg).Milliseconds()
 			if cost >= 5 {
-				fmt.Printf("book newLinkBufferNodeDebug cost %d ms\n", cost)
+				log.Printf("book newLinkBufferNodeDebug cost %d ms\n", cost)
 			}
 		}
 		b.write = b.write.next
@@ -548,7 +549,7 @@ func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
 
 	cost := time.Now().Sub(beg).Milliseconds()
 	if cost >= 5 {
-		fmt.Printf("book cost %d ms\n", cost)
+		log.Printf("book cost %d ms\n", cost)
 	}
 	return p[:i]
 }
