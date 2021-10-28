@@ -365,6 +365,9 @@ func (c *connection) waitReadWithTimeout(n int) (err error) {
 		if c.IsActive() {
 			select {
 			case <-c.readTimer.C:
+				if !c.IsActive() {
+					return Exception(ErrConnClosed, "wait read")
+				}
 				return Exception(
 					ErrReadTimeout,
 					fmt.Sprintf("fd: %d, time: %s", c.fd, c.readTimeout.String()),
