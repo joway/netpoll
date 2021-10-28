@@ -18,7 +18,6 @@
 package netpoll
 
 import (
-	"fmt"
 	"log"
 	"runtime"
 	"sync/atomic"
@@ -95,7 +94,7 @@ func (p *defaultPoll) Wait() (err error) {
 		n, err = EpollWait(p.fd, p.events, msec)
 		cost := time.Now().Sub(beg).Milliseconds()
 		if cost >= 10 {
-			log.Printf("EpollWait(%d)=%d cost %d ms\n", p.fd, n, cost)
+			log.Printf("EpollWait(%d, %d)=%d cost %d ms\n", p.fd, msec, n, cost)
 		}
 
 		if err != nil && err != syscall.EINTR {
@@ -143,11 +142,13 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 		switch {
 		// check hup first
 		case evt&(syscall.EPOLLHUP|syscall.EPOLLRDHUP) != 0:
+			log.Printf("events: EPOLLHUP|EPOLLRDHUP: %d\n", operator.FD)
 			hups = append(hups, operator)
 		case evt&syscall.EPOLLERR != 0:
 			// Under block-zerocopy, the kernel may give an error callback, which is not a real error, just an EAGAIN.
 			// So here we need to check this error, if it is EAGAIN then do nothing, otherwise still mark as hup.
 			if _, _, _, _, err := syscall.Recvmsg(operator.FD, nil, nil, syscall.MSG_ERRQUEUE); err != syscall.EAGAIN {
+				log.Printf("events: EPOLLERR: %d\n", operator.FD)
 				hups = append(hups, operator)
 			}
 		default:
@@ -265,7 +266,7 @@ func (p *defaultPoll) detaches(hups []*FDOperator) error {
 	defer func() {
 		cost := time.Now().Sub(beg).Milliseconds()
 		if cost > 5 {
-			fmt.Printf("detaches costs %d ms\n", cost)
+			log.Printf("detaches costs %d ms\n", cost)
 		}
 	}()
 
@@ -277,6 +278,7 @@ func (p *defaultPoll) detaches(hups []*FDOperator) error {
 	go func(onhups []func(p Poll) error) {
 		for i := range onhups {
 			if onhups[i] != nil {
+				log.Printf("conn %d closed by poller\n", hups[i].FD)
 				onhups[i](p)
 			}
 		}

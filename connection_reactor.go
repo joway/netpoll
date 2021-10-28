@@ -25,7 +25,6 @@ import (
 // onHup means close by poller.
 func (c *connection) onHup(p Poll) error {
 	if c.closeBy(poller) {
-		log.Printf("conn %d closed by poller\n", c.fd)
 		c.triggerRead()
 		c.triggerWrite(ErrConnClosed)
 		// It depends on closing by user if OnRequest is nil, otherwise it needs to be released actively.
