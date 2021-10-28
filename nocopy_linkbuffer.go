@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
+	"time"
 	"unsafe"
 
 	"github.com/bytedance/gopkg/lang/mcache"
@@ -541,7 +542,12 @@ func (b *LinkBuffer) Book(min int, p [][]byte) (vs [][]byte) {
 			}
 		}
 		if b.write.next == nil {
+			beg := time.Now()
 			b.write.next = newLinkBufferNode(min)
+			cost := time.Now().Sub(beg).Milliseconds()
+			if cost >= 1 {
+				fmt.Printf("book newLinkBufferNode cost %d ms\n", cost)
+			}
 		}
 		b.write = b.write.next
 	}
