@@ -15,6 +15,7 @@
 package netpoll
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -367,7 +368,9 @@ func (c *connection) waitReadWithTimeout(n int) (err error) {
 				if !c.IsActive() {
 					return Exception(ErrConnClosed, "wait read")
 				}
-				return Exception(ErrReadTimeout, c.readTimeout.String())
+				return Exception(
+					ErrReadTimeout,
+					fmt.Sprintf("%s, remote[%s] fd[%d]", c.readTimeout.String(), c.RemoteAddr().String(), c.Fd()))
 			case <-c.readTrigger:
 				continue
 			}
