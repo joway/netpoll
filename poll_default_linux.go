@@ -97,15 +97,10 @@ func (p *defaultPoll) Wait() (err error) {
 			return err
 		}
 		if n <= 0 {
-			if msec == 0 {
-				msec = -1
-			}
-			runtime.Gosched()
+			msec = -1
 			continue
 		}
-		if msec == -1 {
-			msec = 0
-		}
+		msec = 0
 		if p.Handler(p.events[:n]) {
 			return nil
 		}
