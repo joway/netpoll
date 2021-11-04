@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !arm64
 // +build !arm64
 
 package netpoll
@@ -38,6 +39,7 @@ func EpollCtl(epfd int, op int, fd int, event *epollevent) (err error) {
 }
 
 // EpollWait implements epoll_wait.
+//go:nosplit
 func EpollWait(epfd int, events []epollevent, msec int) (n int, err error) {
 	var r0 uintptr
 	var _p0 = unsafe.Pointer(&events[0])
