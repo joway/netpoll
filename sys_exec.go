@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build dragonfly || freebsd || linux || netbsd || openbsd || darwin
 // +build dragonfly freebsd linux netbsd openbsd darwin
 
 package netpoll
@@ -61,6 +62,7 @@ type barrier struct {
 }
 
 // writev wraps the writev system call.
+//go:nosplit
 func writev(fd int, bs [][]byte, ivs []syscall.Iovec) (n int, err error) {
 	iovLen := iovecs(bs, ivs)
 	if iovLen == 0 {
@@ -76,6 +78,7 @@ func writev(fd int, bs [][]byte, ivs []syscall.Iovec) (n int, err error) {
 
 // readv wraps the readv system call.
 // return 0, nil means EOF.
+//go:nosplit
 func readv(fd int, bs [][]byte, ivs []syscall.Iovec) (n int, err error) {
 	iovLen := iovecs(bs, ivs)
 	if iovLen == 0 {

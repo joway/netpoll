@@ -25,6 +25,7 @@ var supportZeroCopySend bool
 
 // sendmsg wraps the sendmsg system call.
 // Must len(iovs) >= len(vs)
+//go:nosplit
 func sendmsg(fd int, bs [][]byte, ivs []syscall.Iovec, zerocopy bool) (n int, err error) {
 	iovLen := iovecs(bs, ivs)
 	if iovLen == 0 {
