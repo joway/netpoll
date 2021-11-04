@@ -19,6 +19,7 @@ package netpoll
 
 import (
 	"log"
+	"runtime"
 	"sync/atomic"
 	"syscall"
 	"unsafe"
@@ -99,7 +100,7 @@ func (p *defaultPoll) Wait() (err error) {
 		}
 		if n <= 0 {
 			msec = -1
-			//runtime.Gosched()
+			runtime.Gosched()
 			continue
 		}
 		msec = 0
