@@ -89,7 +89,7 @@ func (p *defaultPoll) Wait() (err error) {
 			p.Reset(p.size<<1, caps)
 		}
 
-		if msec > 0 {
+		if msec < 0 {
 			n, err = EpollWaitBlocking(p.fd, p.events, msec)
 		} else {
 			n, err = EpollWait(p.fd, p.events, msec)
