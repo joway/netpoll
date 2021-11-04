@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !arm64
 // +build !arm64
 
 package netpoll
@@ -50,4 +51,15 @@ func EpollWait(epfd int, events []epollevent, msec int) (n int, err error) {
 		err = nil
 	}
 	return int(r0), err
+}
+
+//go:noescape
+func epollwaitblocking(epfd int32, ev *epollevent, nev, timeout int32) int32
+
+func EpollWaitBlocking(epfd int, events []epollevent, msec int) (n int, err error) {
+	_n := epollwaitblocking(int32(epfd), &events[0], int32(len(events)), int32(msec))
+	if _n < 0 {
+		return 0, syscall.Errno(-n)
+	}
+	return int(_n), nil
 }
