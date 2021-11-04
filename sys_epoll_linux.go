@@ -38,24 +38,22 @@ func EpollCtl(epfd int, op int, fd int, event *epollevent) (err error) {
 	return err
 }
 
-// EpollWait implements epoll_wait.
-func EpollWait(epfd int, events []epollevent, msec int) (n int, err error) {
-	var r0 uintptr
-	var _p0 = unsafe.Pointer(&events[0])
-	if msec == 0 {
-		r0, _, err = syscall.RawSyscall6(syscall.SYS_EPOLL_WAIT, uintptr(epfd), uintptr(_p0), uintptr(len(events)), 0, 0, 0)
-	} else {
-		r0, _, err = syscall.Syscall6(syscall.SYS_EPOLL_WAIT, uintptr(epfd), uintptr(_p0), uintptr(len(events)), uintptr(msec), 0, 0)
-	}
-	if err == syscall.Errno(0) {
-		err = nil
-	}
-	return int(r0), err
-}
+//go:noescape
+func epollwait(epfd int32, ev *epollevent, nev, timeout int32) int32
 
 //go:noescape
 func epollwaitblocking(epfd int32, ev *epollevent, nev, timeout int32) int32
 
+//go:nosplit
+func EpollWait(epfd int, events []epollevent, msec int) (n int, err error) {
+	_n := epollwait(int32(epfd), &events[0], int32(len(events)), int32(msec))
+	if _n < 0 {
+		return 0, syscall.Errno(-n)
+	}
+	return int(_n), nil
+}
+
+//go:nosplit
 func EpollWaitBlocking(epfd int, events []epollevent, msec int) (n int, err error) {
 	_n := epollwaitblocking(int32(epfd), &events[0], int32(len(events)), int32(msec))
 	if _n < 0 {

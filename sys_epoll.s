@@ -14,6 +14,17 @@
 
 #include "textflag.h"
 
+// func epollwait(epfd int32, ev *epollevent, nev, timeout int32) int32
+TEXT ·epollwait(SB),NOSPLIT,$0-32
+    MOVL	epfd+0(FP), DI
+	MOVQ	ev+8(FP), SI
+	MOVL	nev+16(FP), DX
+	MOVL	timeout+20(FP), R10
+	MOVL	$0xe8, AX // SYS_PPOLL
+	SYSCALL
+	MOVL	AX, ret+24(FP)
+	RET
+
 // func epollwaitblocking(epfd int32, ev *epollevent, nev, timeout int32) int32
 TEXT ·epollwaitblocking(SB),NOSPLIT,$0-32
 	CALL	·entersyscallblock(SB)
