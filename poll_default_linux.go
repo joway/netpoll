@@ -81,23 +81,32 @@ func (a *pollArgs) reset(size, caps int) {
 // Wait implements Poll.
 func (p *defaultPoll) Wait() (err error) {
 	// init
-	var caps, msec, n = barriercap, -1, 0
+	var (
+		caps         = barriercap
+		n            = 0
+		miss    uint = 0
+		maxMiss uint = 4
+	)
 	p.Reset(128, caps)
 	// wait
 	for {
 		if n == p.size && p.size < 128*1024 {
 			p.Reset(p.size<<1, caps)
 		}
-		n, err = EpollWait(p.fd, p.events, msec)
+		if miss >= maxMiss {
+			n, err = EpollWait(p.fd, p.events, -1)
+		} else {
+			n, err = EpollWait(p.fd, p.events, 0)
+		}
 		if err != nil && err != syscall.EINTR {
 			return err
 		}
 		if n <= 0 {
-			msec = -1
+			miss++
 			runtime.Gosched()
 			continue
 		}
-		msec = 0
+		miss = 0
 		if p.Handler(p.events[:n]) {
 			return nil
 		}
