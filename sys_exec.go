@@ -61,6 +61,7 @@ type barrier struct {
 }
 
 // writev wraps the writev system call.
+//go:nosplit
 func writev(fd int, bs [][]byte, ivs []syscall.Iovec) (n int, err error) {
 	iovLen := iovecs(bs, ivs)
 	if iovLen == 0 {
@@ -76,6 +77,7 @@ func writev(fd int, bs [][]byte, ivs []syscall.Iovec) (n int, err error) {
 
 // readv wraps the readv system call.
 // return 0, nil means EOF.
+//go:nosplit
 func readv(fd int, bs [][]byte, ivs []syscall.Iovec) (n int, err error) {
 	iovLen := iovecs(bs, ivs)
 	if iovLen == 0 {
@@ -92,6 +94,7 @@ func readv(fd int, bs [][]byte, ivs []syscall.Iovec) (n int, err error) {
 // TODO: read from sysconf(_SC_IOV_MAX)? The Linux default is
 //  1024 and this seems conservative enough for now. Darwin's
 //  UIO_MAXIOV also seems to be 1024.
+//go:nosplit
 func iovecs(bs [][]byte, ivs []syscall.Iovec) (iovLen int) {
 	for i := 0; i < len(bs); i++ {
 		chunk := bs[i]

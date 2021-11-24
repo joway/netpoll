@@ -104,6 +104,7 @@ func (p *defaultPoll) Wait() (err error) {
 	}
 }
 
+//go:nosplit
 func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 	var hups []*FDOperator // TODO: maybe can use sync.Pool
 	for i := range events {
