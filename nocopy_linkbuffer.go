@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !race
 // +build !race
 
 package netpoll
@@ -351,10 +350,10 @@ func (b *LinkBuffer) Flush() (err error) {
 }
 
 // Append implements Writer.
-func (b *LinkBuffer) Append(w Writer) (err error) {
+func (b *LinkBuffer) Append(w Writer) (n int, err error) {
 	var buf, ok = w.(*LinkBuffer)
 	if !ok {
-		return errors.New("unsupported writer which is not LinkBuffer")
+		return 0, errors.New("unsupported writer which is not LinkBuffer")
 	}
 	return b.WriteBuffer(buf)
 }
@@ -362,10 +361,10 @@ func (b *LinkBuffer) Append(w Writer) (err error) {
 // WriteBuffer will not submit(e.g. Flush) data to ensure normal use of MallocLen.
 // you must actively submit before read the data.
 // The argument buf can't be used after calling WriteBuffer. (set it to nil)
-func (b *LinkBuffer) WriteBuffer(buf *LinkBuffer) (err error) {
+func (b *LinkBuffer) WriteBuffer(buf *LinkBuffer) (n int, err error) {
 	bufLen, bufMallocLen := buf.Len(), buf.MallocLen()
 	if bufLen+bufMallocLen <= 0 {
-		return nil
+		return 0, nil
 	}
 	b.write.next = buf.read
 	b.write = buf.write
@@ -394,7 +393,7 @@ func (b *LinkBuffer) WriteBuffer(buf *LinkBuffer) (err error) {
 		b.recalLen(bufLen)
 	}
 	b.mallocSize += bufMallocLen
-	return nil
+	return n, nil
 }
 
 // WriteString implements Writer.
