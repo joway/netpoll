@@ -124,7 +124,6 @@ func (c *connection) onRequest() (needTrigger bool) {
 			}
 			goto START
 		}
-		c.operator.poll.Polling(0)
 	}
 	runTask(c.ctx, task)
 	return false
