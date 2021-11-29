@@ -106,13 +106,8 @@ func (p *defaultPoll) Wait() (err error) {
 	p.Reset(128, barriercap)
 	var n, miss, msec int
 	for {
-		if miss == 0 {
-			msec = 0
-		} else if miss > 0 && miss <= 5 {
-			msec = 0
+		if miss > 0 {
 			runtime.Gosched()
-		} else {
-			msec = -1
 		}
 
 		n, err = p.Polling(msec)
