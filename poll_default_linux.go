@@ -109,6 +109,8 @@ func (p *defaultPoll) Wait() (err error) {
 		if miss >= 1 {
 			msec = -1
 			runtime.Gosched()
+		} else {
+			msec = 0
 		}
 
 		n, err = p.Polling(msec)
