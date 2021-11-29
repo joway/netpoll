@@ -17,6 +17,7 @@
 package netpoll
 
 import (
+	"errors"
 	"log"
 	"runtime"
 	"sync/atomic"
@@ -53,10 +54,11 @@ func openDefaultPoll() *defaultPoll {
 
 type defaultPoll struct {
 	pollArgs
-	fd      int         // epoll fd
-	wop     *FDOperator // eventfd, wake epoll_wait
-	buf     []byte      // read wfd trigger msg
-	trigger uint32      // trigger flag
+	fd       int         // epoll fd
+	wop      *FDOperator // eventfd, wake epoll_wait
+	buf      []byte      // read wfd trigger msg
+	trigger  uint32      // trigger flag
+	pollLock uint32
 	// fns for handle events
 	Reset   func(size, caps int)
 	Handler func(events []epollevent) (closed bool)
@@ -78,28 +80,45 @@ func (a *pollArgs) reset(size, caps int) {
 	}
 }
 
+func (p *defaultPoll) Polling(msec int) (int, error) {
+	if !atomic.CompareAndSwapUint32(&p.pollLock, 0, 1) {
+		return 0, nil
+	}
+	defer atomic.StoreUint32(&p.pollLock, 0)
+
+	n, err := EpollWait(p.fd, p.events, msec)
+	if err != nil {
+		return 0, err
+	}
+	if n > 0 && p.Handler(p.events[:n]) {
+		return 0, errors.New("poller closed")
+	}
+	if n == p.size && p.size < 128*1024 {
+		p.Reset(p.size<<1, barriercap)
+	}
+	return n, nil
+}
+
 // Wait implements Poll.
 func (p *defaultPoll) Wait() (err error) {
 	// init
-	var caps, msec, n = barriercap, -1, 0
-	p.Reset(128, caps)
-	// wait
+	p.Reset(128, barriercap)
+	var n, miss, msec int
 	for {
-		if n == p.size && p.size < 128*1024 {
-			p.Reset(p.size<<1, caps)
+		if miss >= 1 && miss <= 5 {
+			runtime.Gosched()
+		} else if miss > 5 {
+			msec = -1
 		}
-		n, err = EpollWait(p.fd, p.events, msec)
+
+		n, err = p.Polling(msec)
 		if err != nil && err != syscall.EINTR {
 			return err
 		}
-		if n <= 0 {
-			msec = -1
-			runtime.Gosched()
-			continue
-		}
-		msec = 0
-		if p.Handler(p.events[:n]) {
-			return nil
+		if n > 0 {
+			miss = 0
+		} else if err == nil {
+			miss++
 		}
 	}
 }

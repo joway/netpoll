@@ -32,6 +32,8 @@ type Poll interface {
 	// On linux systems, eventfd is used by default, and kevent by default on bsd systems.
 	Trigger() error
 
+	Polling(msec int) (int, error)
+
 	// Control the event of file descriptor and the operations is defined by PollEvent.
 	Control(operator *FDOperator, event PollEvent) error
 }

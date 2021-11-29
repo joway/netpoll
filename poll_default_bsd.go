@@ -51,6 +51,10 @@ type defaultPoll struct {
 	trigger uint32
 }
 
+func (p *defaultPoll) Polling(msec int) (int, error) {
+	return 0, nil
+}
+
 // Wait implements Poll.
 func (p *defaultPoll) Wait() error {
 	// init

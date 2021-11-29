@@ -72,6 +72,10 @@ func (a *pollArgs) reset(size, caps int) {
 	}
 }
 
+func (p *defaultPoll) Polling(msec int) (int, error) {
+	return 0, nil
+}
+
 // Wait implements Poll.
 func (p *defaultPoll) Wait() (err error) {
 	// init

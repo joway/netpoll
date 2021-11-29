@@ -389,6 +389,7 @@ func (c *connection) waitReadWithTimeout(n int) (err error) {
 
 		select {
 		case <-c.readTimer.C:
+			c.operator.poll.Polling(0)
 			// double check if there is enough data to be read
 			if c.inputBuffer.Len() >= n {
 				return nil
