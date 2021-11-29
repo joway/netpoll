@@ -80,6 +80,7 @@ func (a *pollArgs) reset(size, caps int) {
 	}
 }
 
+//go:noinline
 func (p *defaultPoll) Polling(msec int) (int, error) {
 	//if !atomic.CompareAndSwapUint32(&p.pollLock, 0, 1) {
 	//	return 0, nil
@@ -105,10 +106,9 @@ func (p *defaultPoll) Wait() (err error) {
 	p.Reset(128, barriercap)
 	var n, miss, msec int
 	for {
-		if miss == 1 {
-			runtime.Gosched()
-		} else if miss > 1 {
+		if miss >= 1 {
 			msec = -1
+			runtime.Gosched()
 		}
 
 		n, err = p.Polling(msec)
