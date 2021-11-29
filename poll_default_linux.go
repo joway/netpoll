@@ -81,10 +81,10 @@ func (a *pollArgs) reset(size, caps int) {
 }
 
 func (p *defaultPoll) Polling(msec int) (int, error) {
-	if !atomic.CompareAndSwapUint32(&p.pollLock, 0, 1) {
-		return 0, nil
-	}
-	defer atomic.StoreUint32(&p.pollLock, 0)
+	//if !atomic.CompareAndSwapUint32(&p.pollLock, 0, 1) {
+	//	return 0, nil
+	//}
+	//defer atomic.StoreUint32(&p.pollLock, 0)
 
 	n, err := EpollWait(p.fd, p.events, msec)
 	if err != nil {
