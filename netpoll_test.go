@@ -276,6 +276,60 @@ func TestCloseAndWrite(t *testing.T) {
 	MustNil(t, err)
 }
 
+func TestMultiCall(t *testing.T) {
+	// This testcase is to reproduce the out of packet case.
+	// client == "aaa" ==> serverA
+	// client == "bbb" ==> serverB
+	var network, addrA, addrB = "tcp", ":10001", ":10002"
+	var msgA, msgB = "aaa", "bbb"
+	var successCall = func(addr string, data string) {
+		var conn, err = DialConnection(network, addr, time.Second)
+		MustNil(t, err)
+		_, err = conn.Writer().WriteString(data)
+		MustNil(t, err)
+		err = conn.Writer().Flush()
+		MustNil(t, err)
+	}
+	var timeoutCall = func(addr string, data string) {
+		var conn, err = DialConnection(network, addr, time.Second)
+		MustNil(t, err)
+		// timeout and close connection
+		conn.Close()
+
+		// but another goroutine still want to write data
+		_, err = conn.Writer().WriteString(data)
+		MustNil(t, err)
+	}
+	var serverA = newTestEventLoop(network, addrA,
+		func(ctx context.Context, connection Connection) error {
+			defer connection.Reader().Release()
+			buf, err := connection.Reader().Next(len(msgA))
+			MustNil(t, err)
+			Equal(t, string(buf), msgA)
+			return nil
+		},
+	)
+	var serverB = newTestEventLoop(network, addrB,
+		func(ctx context.Context, connection Connection) error {
+			defer connection.Reader().Release()
+			buf, err := connection.Reader().Next(len(msgB))
+			MustNil(t, err)
+			Equal(t, string(buf), msgB)
+			return nil
+		},
+	)
+
+	for i := 0; i < 1024; i++ {
+		successCall(addrA, msgA)
+		timeoutCall(addrB, msgB)
+	}
+
+	err := serverA.Shutdown(context.Background())
+	MustNil(t, err)
+	err = serverB.Shutdown(context.Background())
+	MustNil(t, err)
+}
+
 func newTestEventLoop(network, address string, onRequest OnRequest, opts ...Option) EventLoop {
 	var listener, _ = CreateListener(network, address)
 	var eventLoop, _ = NewEventLoop(onRequest, opts...)

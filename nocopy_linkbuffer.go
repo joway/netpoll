@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sync"
 	"sync/atomic"
 	"unsafe"
 
@@ -687,7 +686,7 @@ func (node *linkBufferNode) Reset() {
 // newLinkBufferNode create or reuse linkBufferNode.
 // Nodes with size <= 0 are marked as readonly, which means the node.buf is not allocated by this mcache.
 func newLinkBufferNode(size int) *linkBufferNode {
-	var node = linkedPool.Get().(*linkBufferNode)
+	var node = &linkBufferNode{}
 	if size <= 0 {
 		node.readonly = true
 		return node
@@ -697,14 +696,6 @@ func newLinkBufferNode(size int) *linkBufferNode {
 	}
 	node.buf = malloc(0, size)
 	return node
-}
-
-var linkedPool = sync.Pool{
-	New: func() interface{} {
-		return &linkBufferNode{
-			refer: 1, // 自带 1 引用
-		}
-	},
 }
 
 type linkBufferNode struct {
@@ -786,7 +777,6 @@ func (node *linkBufferNode) Release() (err error) {
 			free(node.buf)
 		}
 		node.buf = nil
-		linkedPool.Put(node)
 	}
 	return nil
 }
