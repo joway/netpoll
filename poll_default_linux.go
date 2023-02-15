@@ -192,7 +192,7 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 		operator.done()
 	}
 	// hup conns together to avoid blocking the poll.
-	p.detaches()
+	p.onhups()
 	return false
 }
 
@@ -234,37 +234,4 @@ func (p *defaultPoll) Control(operator *FDOperator, event PollEvent) error {
 		op, evt.events = syscall.EPOLL_CTL_MOD, syscall.EPOLLIN|syscall.EPOLLRDHUP|syscall.EPOLLERR
 	}
 	return EpollCtl(p.fd, op, operator.FD, &evt)
-}
-
-func (p *defaultPoll) Alloc() (operator *FDOperator) {
-	op := p.opcache.alloc()
-	op.poll = p
-	return op
-}
-
-func (p *defaultPoll) Free(operator *FDOperator) {
-	p.opcache.freeable(operator)
-}
-
-func (p *defaultPoll) appendHup(operator *FDOperator) {
-	p.hups = append(p.hups, operator.OnHup)
-	if err := operator.Control(PollDetach); err != nil {
-		logger.Printf("NETPOLL: poller detach operator failed: %v", err)
-	}
-	operator.done()
-}
-
-func (p *defaultPoll) detaches() {
-	if len(p.hups) == 0 {
-		return
-	}
-	hups := p.hups
-	p.hups = nil
-	go func(onhups []func(p Poll) error) {
-		for i := range onhups {
-			if onhups[i] != nil {
-				onhups[i](p)
-			}
-		}
-	}(hups)
 }

@@ -244,34 +244,3 @@ func (p *defaultPoll) Control(operator *FDOperator, event PollEvent) error {
 	}
 	return syscall.EpollCtl(p.fd, op, operator.FD, &evt)
 }
-
-func (p *defaultPoll) Alloc() (operator *FDOperator) {
-	op := p.opcache.alloc()
-	op.poll = p
-	return op
-}
-
-func (p *defaultPoll) Free(operator *FDOperator) {
-	p.opcache.freeable(operator)
-}
-
-func (p *defaultPoll) appendHup(operator *FDOperator) {
-	p.hups = append(p.hups, operator.OnHup)
-	operator.Control(PollDetach)
-	operator.done()
-}
-
-func (p *defaultPoll) detaches() {
-	if len(p.hups) == 0 {
-		return
-	}
-	hups := p.hups
-	p.hups = nil
-	go func(onhups []func(p Poll) error) {
-		for i := range onhups {
-			if onhups[i] != nil {
-				onhups[i](p)
-			}
-		}
-	}(hups)
-}
