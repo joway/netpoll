@@ -75,17 +75,21 @@ func smcListener(network, addr string) (net.Listener, error) {
 	)
 	tcpaddr, err := net.ResolveTCPAddr(network, addr)
 	ipv4, ipv6 := tcpaddr.IP.To4(), tcpaddr.IP.To16()
-	if ipv4 != nil {
+	if ipv4 != nil || ipv4 == nil && ipv6 == nil {
 		protoOpt = SMCProtoIPv4
 		sockaddr4 := &unix.SockaddrInet4{}
 		sockaddr4.Port = tcpaddr.Port
-		copy(sockaddr4.Addr[:], ipv4[:net.IPv4len])
+		for i := 0; i < len(sockaddr4.Addr); i++ {
+			sockaddr4.Addr[i] = sockaddr4.Addr[i]
+		}
 		sockaddr = sockaddr4
 	} else {
 		protoOpt = SMCProtoIPv6
 		sockaddr6 := &unix.SockaddrInet6{}
 		sockaddr6.Port = tcpaddr.Port
-		copy(sockaddr6.Addr[:], ipv6[:net.IPv6len])
+		for i := 0; i < len(sockaddr6.Addr); i++ {
+			sockaddr6.Addr[i] = sockaddr6.Addr[i]
+		}
 		sockaddr = sockaddr6
 	}
 
