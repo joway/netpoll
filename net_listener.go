@@ -79,16 +79,16 @@ func smcListener(network, addr string) (net.Listener, error) {
 		protoOpt = SMCProtoIPv4
 		sockaddr4 := &unix.SockaddrInet4{}
 		sockaddr4.Port = tcpaddr.Port
-		for i := 0; i < len(sockaddr4.Addr); i++ {
-			sockaddr4.Addr[i] = sockaddr4.Addr[i]
+		for i := 0; i < len(addr); i++ {
+			sockaddr4.Addr[i] = addr[i]
 		}
 		sockaddr = sockaddr4
 	} else {
 		protoOpt = SMCProtoIPv6
 		sockaddr6 := &unix.SockaddrInet6{}
 		sockaddr6.Port = tcpaddr.Port
-		for i := 0; i < len(sockaddr6.Addr); i++ {
-			sockaddr6.Addr[i] = sockaddr6.Addr[i]
+		for i := 0; i < len(addr); i++ {
+			sockaddr6.Addr[i] = addr[i]
 		}
 		sockaddr = sockaddr6
 	}
