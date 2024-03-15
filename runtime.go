@@ -15,8 +15,17 @@
 package netpoll
 
 import (
+	"unsafe"
 	_ "unsafe"
 )
+
+type waitReason uint8
+type traceBlockReason uint8
+
+// -- asm ---
+func getg() uintptr
+
+// --- link ---
 
 //go:linkname runtime_pollOpen internal/poll.runtime_pollOpen
 func runtime_pollOpen(fd uintptr) (pd uintptr, errno int)
@@ -26,3 +35,12 @@ func runtime_pollWait(pd uintptr, mode int) (errno int)
 
 //go:linkname runtime_pollReset internal/poll.runtime_pollReset
 func runtime_pollReset(pd uintptr, mode int) (errno int)
+
+//go:linkname runtime_pollClose internal/poll.runtime_pollClose
+func runtime_pollClose(pd uintptr)
+
+//go:linkname gopark runtime.gopark
+func gopark(unlockf func(gp uintptr, _ unsafe.Pointer) bool, lock unsafe.Pointer, reason waitReason, traceReason traceBlockReason, traceskip int)
+
+//go:linkname goready runtime.goready
+func goready(gp uintptr, traceskip int)

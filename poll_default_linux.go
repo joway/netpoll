@@ -63,7 +63,6 @@ func openDefaultPoll() (*defaultPoll, error) {
 	poll.Reset = poll.reset
 	poll.Handler = poll.handler
 	poll.wop = &FDOperator{FD: int(r0)}
-
 	if err = poll.Control(poll.wop, PollReadable); err != nil {
 		_ = syscall.Close(poll.wop.FD)
 		_ = syscall.Close(poll.fd)
@@ -245,6 +244,9 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 
 // Close will write 10000000
 func (p *defaultPoll) Close() error {
+	if p.pd != 0 {
+		runtime_pollClose(p.pd)
+	}
 	_, err := syscall.Write(p.wop.FD, []byte{1, 0, 0, 0, 0, 0, 0, 0})
 	return err
 }
