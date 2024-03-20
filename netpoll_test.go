@@ -20,7 +20,10 @@ package netpoll
 import (
 	"context"
 	"errors"
+	"log"
 	"math/rand"
+	"net/http"
+	_ "net/http/pprof"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -503,6 +506,70 @@ func TestClientWriteAndClose(t *testing.T) {
 		t.Logf("left %d bytes not received", exceptbytes-atomic.LoadInt32(&recvbytes))
 		runtime.Gosched()
 	}
+	err := loop.Shutdown(context.Background())
+	MustNil(t, err)
+}
+
+func TestClientCloseBeforeRead(t *testing.T) {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	var (
+		network, address = "tcp", ":18889"
+		connnum          = 10
+		packetsize       = 1024 * 1024 * 100
+		connected        int32
+		connections      = make([]Connection, connnum)
+	)
+	var wg sync.WaitGroup
+	var loop = newTestEventLoop(network, address,
+		func(ctx context.Context, connection Connection) error {
+			_, err := connection.Reader().Next(connection.Reader().Len())
+			return err
+		},
+		WithOnConnect(func(ctx context.Context, connection Connection) context.Context {
+			defer wg.Done()
+			// write to client
+			_, _ = connection.Writer().Malloc(packetsize)
+			_ = connection.Writer().MallocAck(packetsize)
+			_ = connection.Writer().Flush()
+			atomic.AddInt32(&connected, 1)
+
+			connection.Close()
+			return ctx
+		}),
+	)
+	for i := 0; i < connnum; i++ {
+		wg.Add(1)
+		conn, err := DialConnection(network, address, time.Second)
+		MustNil(t, err)
+		connections[i] = conn
+		id := i
+		runtime.SetFinalizer(conn, func(c Connection) {
+			t.Logf("conn[%d] released", id)
+		})
+	}
+	wg.Wait()
+	for _, conn := range connections {
+		_, err := conn.Reader().Peek(1)
+		MustNil(t, err)
+	}
+	time.Sleep(time.Second)
+	for _, conn := range connections {
+		Assert(t, !conn.IsActive())
+	}
+
+	for _, conn := range connections {
+		err := conn.Close()
+		MustNil(t, err)
+	}
+	connections = connections[:0]
+	runtime.GC()
+	time.Sleep(time.Hour)
+	_ = connections
+	//runtime.KeepAlive(connections)
+
 	err := loop.Shutdown(context.Background())
 	MustNil(t, err)
 }
