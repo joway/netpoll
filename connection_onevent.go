@@ -19,12 +19,17 @@ package netpoll
 
 import (
 	"context"
+	"runtime"
 	"sync/atomic"
-
-	"github.com/bytedance/gopkg/util/gopool"
 )
 
-var runTask = gopool.CtxGo
+var globalRunQ = newRunQ(runtime.GOMAXPROCS(0) * 8)
+
+var runTask = runqRunner
+
+func runqRunner(_ context.Context, f func()) {
+	globalRunQ.Go(f)
+}
 
 func setRunner(runner func(ctx context.Context, f func())) {
 	runTask = runner

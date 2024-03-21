@@ -36,7 +36,7 @@ const BinaryInplaceThreshold = block4k
 // LinkBufferCap that can be modified marks the minimum value of each node of LinkBuffer.
 var LinkBufferCap = block4k
 
-// NewLinkBuffer size defines the initial capacity, but there is no readable data.
+// NewLinkBuffer gqsize defines the initial capacity, but there is no readable data.
 func NewLinkBuffer(size ...int) *LinkBuffer {
 	var buf = &LinkBuffer{}
 	var l int
@@ -628,8 +628,8 @@ func (b *LinkBuffer) GetBytes(p [][]byte) (vs [][]byte) {
 
 // book will grow and malloc buffer to hold data.
 //
-// bookSize: The size of data that can be read at once.
-// maxSize: The maximum size of data between two Release(). In some cases, this can
+// bookSize: The gqsize of data that can be read at once.
+// maxSize: The maximum gqsize of data between two Release(). In some cases, this can
 //
 //	guarantee all data allocated in one node to reduce copy.
 func (b *LinkBuffer) book(bookSize, maxSize int) (p []byte) {
@@ -650,7 +650,7 @@ func (b *LinkBuffer) book(bookSize, maxSize int) (p []byte) {
 
 // bookAck will ack the first n malloc bytes and discard the rest.
 //
-// length: The size of data in inputBuffer. It is used to calculate the maxSize
+// length: The gqsize of data in inputBuffer. It is used to calculate the maxSize
 func (b *LinkBuffer) bookAck(n int) (length int, err error) {
 	b.Lock()
 	defer b.Unlock()
@@ -663,7 +663,7 @@ func (b *LinkBuffer) bookAck(n int) (length int, err error) {
 	return length, nil
 }
 
-// calcMaxSize will calculate the data size between two Release()
+// calcMaxSize will calculate the data gqsize between two Release()
 func (b *LinkBuffer) calcMaxSize() (sum int) {
 	for node := b.head; node != b.read; node = node.next {
 		sum += len(node.buf)
@@ -729,7 +729,7 @@ func (b *LinkBuffer) recalLen(delta int) (length int) {
 // ------------------------------------------ implement link node ------------------------------------------
 
 // newLinkBufferNode create or reuse linkBufferNode.
-// Nodes with size <= 0 are marked as readonly, which means the node.buf is not allocated by this mcache.
+// Nodes with gqsize <= 0 are marked as readonly, which means the node.buf is not allocated by this mcache.
 func newLinkBufferNode(size int) *linkBufferNode {
 	var node = linkedPool.Get().(*linkBufferNode)
 	// reset node offset

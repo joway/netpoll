@@ -45,8 +45,8 @@ type connection struct {
 	outputBuffer    *LinkBuffer
 	outputBarrier   *barrier
 	supportZeroCopy bool
-	maxSize         int   // The maximum size of data between two Release().
-	bookSize        int   // The size of data that can be read at once.
+	maxSize         int   // The maximum gqsize of data between two Release().
+	bookSize        int   // The gqsize of data that can be read at once.
 	state           int32 // 0: not connected, 1: connected, 2: disconnected. Connection state should be changed sequentially.
 }
 

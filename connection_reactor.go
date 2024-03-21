@@ -95,7 +95,7 @@ func (c *connection) inputAck(n int) (err error) {
 		return nil
 	}
 
-	// Auto size bookSize.
+	// Auto gqsize bookSize.
 	if n == c.bookSize && c.bookSize < mallocMax {
 		c.bookSize <<= 1
 	}

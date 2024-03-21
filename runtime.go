@@ -15,12 +15,21 @@
 package netpoll
 
 import (
+	"sync/atomic"
 	"unsafe"
 	_ "unsafe"
 )
 
 type waitReason uint8
 type traceBlockReason uint8
+
+const (
+	waitReasonChanReceive waitReason = 14
+	waitReasonChanSend    waitReason = 15
+
+	traceBlockChanSend traceBlockReason = 22
+	traceBlockChanRecv traceBlockReason = 23
+)
 
 // -- asm ---
 func getg() uintptr
@@ -42,5 +51,27 @@ func runtime_pollClose(pd uintptr)
 //go:linkname gopark runtime.gopark
 func gopark(unlockf func(gp uintptr, _ unsafe.Pointer) bool, lock unsafe.Pointer, reason waitReason, traceReason traceBlockReason, traceskip int)
 
+// goready: runqput and wakep
+//
 //go:linkname goready runtime.goready
 func goready(gp uintptr, traceskip int)
+
+//go:linkname wakep runtime.wakep
+func wakep()
+
+var golist = make([]atomic.Value, 1)
+var taskRing = make([]atomic.Value, 1)
+
+func notify(gp uintptr, _ unsafe.Pointer) bool {
+	gv := golist[0]
+	gv.Store(gp)
+	return true
+}
+
+func park() {
+	gopark(notify, nil, waitReasonChanReceive, traceBlockChanRecv, 1)
+}
+
+func ready(gp uintptr) {
+	goready(gp, 1)
+}
