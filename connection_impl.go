@@ -126,19 +126,7 @@ func (c *connection) Release() (err error) {
 	// Check inputBuffer length first to reduce contention in mux situation.
 	// c.operator.do competes with c.inputs/c.inputAck
 	if c.inputBuffer.Len() == 0 && c.operator.do() {
-		maxSize := c.inputBuffer.calcMaxSize()
-		// Set the maximum value of maxsize equal to mallocMax to prevent GC pressure.
-		if maxSize > mallocMax {
-			maxSize = mallocMax
-		}
-
-		if maxSize > c.maxSize {
-			c.maxSize = maxSize
-		}
-		// Double check length to reset tail node
-		if c.inputBuffer.Len() == 0 {
-			c.inputBuffer.resetTail(c.maxSize)
-		}
+		c.inputBuffer.resetTail()
 		c.operator.done()
 	}
 	return c.inputBuffer.Release()

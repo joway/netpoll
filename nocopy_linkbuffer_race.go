@@ -210,17 +210,10 @@ func (b *SafeLinkBuffer) bookAck(n int) (length int, err error) {
 	return b.UnsafeLinkBuffer.bookAck(n)
 }
 
-// calcMaxSize will calculate the data size between two Release()
-func (b *SafeLinkBuffer) calcMaxSize() (sum int) {
+func (b *SafeLinkBuffer) resetTail() {
 	b.Lock()
 	defer b.Unlock()
-	return b.UnsafeLinkBuffer.calcMaxSize()
-}
-
-func (b *SafeLinkBuffer) resetTail(maxSize int) {
-	b.Lock()
-	defer b.Unlock()
-	b.UnsafeLinkBuffer.resetTail(maxSize)
+	b.UnsafeLinkBuffer.resetTail()
 }
 
 func (b *SafeLinkBuffer) indexByte(c byte, skip int) int {

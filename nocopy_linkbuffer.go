@@ -663,28 +663,32 @@ func (b *UnsafeLinkBuffer) bookAck(n int) (length int, err error) {
 	return length, nil
 }
 
-// calcMaxSize will calculate the data size between two Release()
-func (b *UnsafeLinkBuffer) calcMaxSize() (sum int) {
-	for node := b.head; node != b.read; node = node.next {
-		sum += len(node.buf)
-	}
-	sum += len(b.read.buf)
-	return sum
-}
-
 // resetTail will reset tail node or add an empty tail node to
 // guarantee the tail node is not larger than 8KB
-func (b *UnsafeLinkBuffer) resetTail(maxSize int) {
-	// FIXME: Reset should be removed when find a decent way to reuse buffer
-	if maxSize <= pagesize {
-		b.write.Reset()
+// caller should call Release() after call resetTail() to release the data node
+func (b *UnsafeLinkBuffer) resetTail() {
+	// only reset tail when all readable data has been read
+	if b.Len() != 0 {
+		return
+	}
+	// calculate the size of already read but not released buffer
+	unReleasedSize := 0
+	for node := b.head; node != b.read; node = node.next {
+		unReleasedSize += len(node.buf)
+	}
+	unReleasedSize += len(b.read.buf)
+	if unReleasedSize == 0 {
+		return
+	}
+
+	if unReleasedSize <= pagesize {
+		// no need to reset tail
 		return
 	}
 	// set nil tail
 	b.write.next = newLinkBufferNode(0)
 	b.write = b.write.next
 	b.flush = b.write
-	return
 }
 
 // indexByte returns the index of the first instance of c in buffer, or -1 if c is not present in buffer.
